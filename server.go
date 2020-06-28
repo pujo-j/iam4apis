@@ -13,13 +13,8 @@ import (
 	"github.com/pujo-j/iam4apis/graph/generated"
 )
 
-const defaultPort = "4300"
-
 func main() {
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = defaultPort
-	}
+	port := "4300"
 	dbUrl := os.Getenv("POSTGRES_URL")
 	if dbUrl == "" {
 		dbUrl = "postgresql://iam4apis:iam4apis@localhost/iam4apis"
