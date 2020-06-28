@@ -19,6 +19,12 @@ type EditUser struct {
 	Roles []*EditRole `json:"roles"`
 }
 
+type EnrichUser struct {
+	Email    string `json:"email"`
+	FullName string `json:"fullName"`
+	Profile  string `json:"profile"`
+}
+
 type Role struct {
 	Name string `json:"name"`
 	Path string `json:"path"`

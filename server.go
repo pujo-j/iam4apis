@@ -34,7 +34,15 @@ func main() {
 	}
 	admin, err := store.GetUser(context.Background(), admin_user)
 	if err != nil {
-		admin, err = store.UpdateUser(context.Background(), model.EditUser{
+		dummyAdmin := &model.User{
+			Email:  admin_user,
+			Active: true,
+			Roles: []*model.Role{{
+				Name: "admin",
+				Path: "/",
+			}},
+		}
+		admin, err = store.UpdateUser(context.WithValue(context.Background(), userKey, dummyAdmin), model.EditUser{
 			Email: admin_user,
 			Roles: []*model.EditRole{{
 				Name: "admin",

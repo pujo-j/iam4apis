@@ -23,6 +23,14 @@ func (r *mutationResolver) EditUser(ctx context.Context, u model.EditUser) (*mod
 	return r.Db.UpdateUser(ctx, u)
 }
 
+func (r *mutationResolver) EnrichUser(ctx context.Context, u model.EnrichUser) (*model.User, error) {
+	return r.Db.EnrichUser(ctx, u.Email, u.FullName, u.Profile)
+}
+
+func (r *queryResolver) Login(ctx context.Context) (*model.User, error) {
+	return r.Db.Login(ctx)
+}
+
 func (r *queryResolver) Users(ctx context.Context, from *string) ([]*model.User, error) {
 	return r.Db.GetUsers(ctx, from)
 }
@@ -35,13 +43,13 @@ func (r *queryResolver) AdminEvents(ctx context.Context, from *time.Time) ([]*mo
 	return r.Db.GetEvents(ctx, from)
 }
 
-func (r *queryResolver) UserInRole(ctx context.Context, user string, path string, role string) (*bool, error) {
-	full_user, err := r.Db.GetUser(ctx, user)
+func (r *queryResolver) UserInRole(ctx context.Context, user string, path string, role string) (bool, error) {
+	fullUser, err := r.Db.GetUser(ctx, user)
 	if err != nil {
-		return nil, err
+		return false, err
 	}
-	isInRole := full_user.IsInRole(role, path)
-	return &isInRole, nil
+	isInRole := fullUser.IsInRole(role, path)
+	return isInRole, nil
 }
 
 // AdminEvent returns generated.AdminEventResolver implementation.

@@ -194,7 +194,7 @@ func (p *PostgreStore) UpdateUser(ctx context.Context, newUser model.EditUser) (
 		roles, err := json.Marshal(newUser.Roles)
 		_, err = tx.Exec(ctx, `
 		INSERT INTO users(email,active,roles) VALUES($1,false,$2)
-		ON CONFLICT DO UPDATE SET roles=$2
+		ON CONFLICT ON CONSTRAINT users_pkey DO UPDATE SET roles=$2
 `,
 			newUser.Email,
 			string(roles),
@@ -239,7 +239,7 @@ func (p *PostgreStore) GetEvents(ctx context.Context, from *time.Time) ([]*model
 			return res, nil
 		}
 	}
-	rows, err := p.pool.Query(ctx, "SELECT id, ts, admin_id, user_id, roles FROM admin_events WHERE ts>$1 ORDER BY ts LIMIT 50", from)
+	rows, err := p.pool.Query(ctx, "SELECT CAST(id as CHARACTER VARYING) as id, ts, admin_id, user_id, roles FROM admin_events WHERE ts>$1 ORDER BY ts LIMIT 50", from)
 	if err != nil {
 		return nil, err
 	}
@@ -260,15 +260,28 @@ func (p *PostgreStore) GetEvents(ctx context.Context, from *time.Time) ([]*model
 	return res, nil
 }
 
-func (p *PostgreStore) EnrichUser(ctx context.Context, email string, fullName string, profile string) error {
-	tag, err := p.pool.Exec(ctx, "UPDATE users set active=true, fullName=$2, profile=$3 WHERE email=$1", email, fullName, profile)
+func (p *PostgreStore) EnrichUser(ctx context.Context, email string, fullName string, profile string) (*model.User, error) {
+	currentUser := ForContext(ctx)
+	if !currentUser.IsInRole("admin", "/") {
+		if currentUser.Email != email {
+			return nil, errors.New("cannot modify user")
+		}
+	}
+	user, err := p.GetUser(ctx, email)
 	if err != nil {
-		return err
+		return nil, err
+	}
+	tag, err := p.pool.Exec(ctx, "UPDATE users set active=true, \"fullName\"=$2, profile=$3 WHERE email=$1", email, fullName, profile)
+	if err != nil {
+		return nil, err
 	}
 	if tag.RowsAffected() != 1 {
-		return errors.New("no such user")
+		return nil, errors.New("no such user")
 	}
-	return nil
+	user.FullName = &fullName
+	user.Profile = &profile
+	p.cache.Set(email, user, 1)
+	return user, nil
 }
 
 func (p *PostgreStore) PollEvents() {
@@ -276,7 +289,7 @@ func (p *PostgreStore) PollEvents() {
 	var lastEventTime time.Time
 	tick := time.Tick(5 * time.Second)
 	var refresh = func() {
-		rows, err := p.pool.Query(bg, "SELECT id, ts, admin_id, user_id, roles FROM admin_events WHERE ts>$1 ORDER BY ts LIMIT 50 ", lastEventTime)
+		rows, err := p.pool.Query(bg, "SELECT CAST(id as CHARACTER VARYING) as id, ts, admin_id, user_id, roles FROM admin_events WHERE ts>$1 ORDER BY ts LIMIT 50 ", lastEventTime)
 		if err != nil {
 			panic(err)
 		}
@@ -326,4 +339,35 @@ func (p *PostgreStore) MiddleWare(r *http.Request) context.Context {
 		}
 	}
 	return r.Context()
+}
+
+func (p *PostgreStore) Login(ctx context.Context) (*model.User, error) {
+	user := ForContext(ctx)
+	t := time.Now()
+	if user == nil {
+		return nil, errors.New("no such user")
+	}
+	if user.FirstAccess == nil {
+		tag, err := p.pool.Exec(ctx, "UPDATE users SET \"firstAccess\"=$2, \"lastAccess\"=$2 WHERE email=$1", user.Email, t)
+		if err != nil {
+			return nil, err
+		}
+		if tag.RowsAffected() != 1 {
+			return nil, errors.New("update user failed")
+		}
+		user.FirstAccess = &t
+		user.LastAccess = &t
+		p.cache.Set(user.Email, user, 1)
+	} else {
+		tag, err := p.pool.Exec(ctx, "UPDATE users SET \"lastAccess\"=$2 WHERE email=$1", user.Email, t)
+		if err != nil {
+			return nil, err
+		}
+		if tag.RowsAffected() != 1 {
+			return nil, errors.New("update user failed")
+		}
+		user.LastAccess = &t
+		p.cache.Set(user.Email, user, 1)
+	}
+	return user, nil
 }

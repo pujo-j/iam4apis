@@ -32,10 +32,11 @@ type User {
 }
 
 type Query {
+    login: User!
     users(from: ID): [User!]!
     searchUsers(namePart:String!):[User!]!
     adminEvents(from: Time): [AdminEvent!]!
-    userInRole(user:ID!, path: String!, role: String!): Boolean
+    userInRole(user:ID!, path: String!, role: String!): Boolean!
 }
 
 input EditRole {
@@ -48,6 +49,13 @@ input EditUser {
     roles: [EditRole!]!
 }
 
+input EnrichUser {
+    email: ID!
+    fullName: String!
+    profile: String!
+}
+
 type Mutation {
     editUser(u:EditUser!): User!
+    enrichUser(u: EnrichUser!): User!
 }

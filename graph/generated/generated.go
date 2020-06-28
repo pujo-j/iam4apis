@@ -54,11 +54,13 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
-		EditUser func(childComplexity int, u model.EditUser) int
+		EditUser   func(childComplexity int, u model.EditUser) int
+		EnrichUser func(childComplexity int, u model.EnrichUser) int
 	}
 
 	Query struct {
 		AdminEvents func(childComplexity int, from *time.Time) int
+		Login       func(childComplexity int) int
 		SearchUsers func(childComplexity int, namePart string) int
 		UserInRole  func(childComplexity int, user string, path string, role string) int
 		Users       func(childComplexity int, from *string) int
@@ -86,12 +88,14 @@ type AdminEventResolver interface {
 }
 type MutationResolver interface {
 	EditUser(ctx context.Context, u model.EditUser) (*model.User, error)
+	EnrichUser(ctx context.Context, u model.EnrichUser) (*model.User, error)
 }
 type QueryResolver interface {
+	Login(ctx context.Context) (*model.User, error)
 	Users(ctx context.Context, from *string) ([]*model.User, error)
 	SearchUsers(ctx context.Context, namePart string) ([]*model.User, error)
 	AdminEvents(ctx context.Context, from *time.Time) ([]*model.AdminEvent, error)
-	UserInRole(ctx context.Context, user string, path string, role string) (*bool, error)
+	UserInRole(ctx context.Context, user string, path string, role string) (bool, error)
 }
 
 type executableSchema struct {
@@ -156,6 +160,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.EditUser(childComplexity, args["u"].(model.EditUser)), true
 
+	case "Mutation.enrichUser":
+		if e.complexity.Mutation.EnrichUser == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_enrichUser_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.EnrichUser(childComplexity, args["u"].(model.EnrichUser)), true
+
 	case "Query.adminEvents":
 		if e.complexity.Query.AdminEvents == nil {
 			break
@@ -167,6 +183,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.AdminEvents(childComplexity, args["from"].(*time.Time)), true
+
+	case "Query.login":
+		if e.complexity.Query.Login == nil {
+			break
+		}
+
+		return e.complexity.Query.Login(childComplexity), true
 
 	case "Query.searchUsers":
 		if e.complexity.Query.SearchUsers == nil {
@@ -365,10 +388,11 @@ type User {
 }
 
 type Query {
+    login: User!
     users(from: ID): [User!]!
     searchUsers(namePart:String!):[User!]!
     adminEvents(from: Time): [AdminEvent!]!
-    userInRole(user:ID!, path: String!, role: String!): Boolean
+    userInRole(user:ID!, path: String!, role: String!): Boolean!
 }
 
 input EditRole {
@@ -381,8 +405,15 @@ input EditUser {
     roles: [EditRole!]!
 }
 
+input EnrichUser {
+    email: ID!
+    fullName: String!
+    profile: String!
+}
+
 type Mutation {
     editUser(u:EditUser!): User!
+    enrichUser(u: EnrichUser!): User!
 }`, BuiltIn: false},
 }
 var parsedSchema = gqlparser.MustLoadSchema(sources...)
@@ -397,6 +428,20 @@ func (ec *executionContext) field_Mutation_editUser_args(ctx context.Context, ra
 	var arg0 model.EditUser
 	if tmp, ok := rawArgs["u"]; ok {
 		arg0, err = ec.unmarshalNEditUser2githubᚗcomᚋpujoᚑjᚋiam4apisᚋgraphᚋmodelᚐEditUser(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["u"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_enrichUser_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 model.EnrichUser
+	if tmp, ok := rawArgs["u"]; ok {
+		arg0, err = ec.unmarshalNEnrichUser2githubᚗcomᚋpujoᚑjᚋiam4apisᚋgraphᚋmodelᚐEnrichUser(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -738,6 +783,81 @@ func (ec *executionContext) _Mutation_editUser(ctx context.Context, field graphq
 	return ec.marshalNUser2ᚖgithubᚗcomᚋpujoᚑjᚋiam4apisᚋgraphᚋmodelᚐUser(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Mutation_enrichUser(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Mutation",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_enrichUser_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().EnrichUser(rctx, args["u"].(model.EnrichUser))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.User)
+	fc.Result = res
+	return ec.marshalNUser2ᚖgithubᚗcomᚋpujoᚑjᚋiam4apisᚋgraphᚋmodelᚐUser(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_login(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Query",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().Login(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.User)
+	fc.Result = res
+	return ec.marshalNUser2ᚖgithubᚗcomᚋpujoᚑjᚋiam4apisᚋgraphᚋmodelᚐUser(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Query_users(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -892,11 +1012,14 @@ func (ec *executionContext) _Query_userInRole(ctx context.Context, field graphql
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
-	res := resTmp.(*bool)
+	res := resTmp.(bool)
 	fc.Result = res
-	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -2365,6 +2488,36 @@ func (ec *executionContext) unmarshalInputEditUser(ctx context.Context, obj inte
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputEnrichUser(ctx context.Context, obj interface{}) (model.EnrichUser, error) {
+	var it model.EnrichUser
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "email":
+			var err error
+			it.Email, err = ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "fullName":
+			var err error
+			it.FullName, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "profile":
+			var err error
+			it.Profile, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 // endregion **************************** input.gotpl *****************************
 
 // region    ************************** interface.gotpl ***************************
@@ -2458,6 +2611,11 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "enrichUser":
+			out.Values[i] = ec._Mutation_enrichUser(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -2484,6 +2642,20 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Query")
+		case "login":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_login(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
 		case "users":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
@@ -2535,6 +2707,9 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_userInRole(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
 				return res
 			})
 		case "__type":
@@ -2973,6 +3148,10 @@ func (ec *executionContext) unmarshalNEditRole2ᚖgithubᚗcomᚋpujoᚑjᚋiam4
 
 func (ec *executionContext) unmarshalNEditUser2githubᚗcomᚋpujoᚑjᚋiam4apisᚋgraphᚋmodelᚐEditUser(ctx context.Context, v interface{}) (model.EditUser, error) {
 	return ec.unmarshalInputEditUser(ctx, v)
+}
+
+func (ec *executionContext) unmarshalNEnrichUser2githubᚗcomᚋpujoᚑjᚋiam4apisᚋgraphᚋmodelᚐEnrichUser(ctx context.Context, v interface{}) (model.EnrichUser, error) {
+	return ec.unmarshalInputEnrichUser(ctx, v)
 }
 
 func (ec *executionContext) unmarshalNID2string(ctx context.Context, v interface{}) (string, error) {
