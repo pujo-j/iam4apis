@@ -1,0 +1,53 @@
+# GraphQL schema example
+#
+# https://gqlgen.com/getting-started/
+
+scalar Time
+
+enum AdminEventType {
+    EDIT_USER
+}
+
+type AdminEvent {
+    id: ID!
+    ts: Time!
+    admin: User!
+    user: User!
+    roles: [Role!]!
+}
+
+type Role {
+    name: String!
+    path: String!
+}
+
+type User {
+    email: ID!
+    active: Boolean!
+    roles: [Role!]!
+    fullName: String
+    profile: String
+    firstAccess: Time
+    lastAccess: Time
+}
+
+type Query {
+    users(from: ID): [User!]!
+    searchUsers(namePart:String!):[User!]!
+    adminEvents(from: Time): [AdminEvent!]!
+    userInRole(user:ID!, path: String!, role: String!): Boolean
+}
+
+input EditRole {
+    name: String!
+    path: String!
+}
+
+input EditUser {
+    email: ID!
+    roles: [EditRole!]!
+}
+
+type Mutation {
+    editUser(u:EditUser!): User!
+}
