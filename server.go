@@ -20,22 +20,22 @@ func main() {
 	if port == "" {
 		port = defaultPort
 	}
-	db_url := os.Getenv("POSTGRES_URL")
-	if db_url == "" {
-		db_url = "postgresql://iam4apis:iam4apis@localhost/iam4apis"
+	dbUrl := os.Getenv("POSTGRES_URL")
+	if dbUrl == "" {
+		dbUrl = "postgresql://iam4apis:iam4apis@localhost/iam4apis"
 	}
-	admin_user := os.Getenv("ADMIN_USER")
-	if admin_user == "" {
+	adminUser := os.Getenv("ADMIN_USER")
+	if adminUser == "" {
 		log.Fatal("ADMIN_USER env is mandatory")
 	}
-	store, err := NewPostgreStore(db_url)
+	store, err := NewPostgreStore(dbUrl)
 	if err != nil {
 		log.Fatal(err)
 	}
-	admin, err := store.GetUser(context.Background(), admin_user)
+	admin, err := store.GetUser(context.Background(), adminUser)
 	if err != nil {
 		dummyAdmin := &model.User{
-			Email:  admin_user,
+			Email:  adminUser,
 			Active: true,
 			Roles: []*model.Role{{
 				Name: "admin",
@@ -43,7 +43,7 @@ func main() {
 			}},
 		}
 		admin, err = store.UpdateUser(context.WithValue(context.Background(), userKey, dummyAdmin), model.EditUser{
-			Email: admin_user,
+			Email: adminUser,
 			Roles: []*model.EditRole{{
 				Name: "admin",
 				Path: "/",

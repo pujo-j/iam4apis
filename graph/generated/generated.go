@@ -62,6 +62,7 @@ type ComplexityRoot struct {
 		AdminEvents func(childComplexity int, from *time.Time) int
 		Login       func(childComplexity int) int
 		SearchUsers func(childComplexity int, namePart string) int
+		User        func(childComplexity int, email string) int
 		UserInRole  func(childComplexity int, user string, path string, role string) int
 		Users       func(childComplexity int, from *string) int
 	}
@@ -92,6 +93,7 @@ type MutationResolver interface {
 }
 type QueryResolver interface {
 	Login(ctx context.Context) (*model.User, error)
+	User(ctx context.Context, email string) (*model.User, error)
 	Users(ctx context.Context, from *string) ([]*model.User, error)
 	SearchUsers(ctx context.Context, namePart string) ([]*model.User, error)
 	AdminEvents(ctx context.Context, from *time.Time) ([]*model.AdminEvent, error)
@@ -202,6 +204,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.SearchUsers(childComplexity, args["namePart"].(string)), true
+
+	case "Query.user":
+		if e.complexity.Query.User == nil {
+			break
+		}
+
+		args, err := ec.field_Query_user_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.User(childComplexity, args["email"].(string)), true
 
 	case "Query.userInRole":
 		if e.complexity.Query.UserInRole == nil {
@@ -389,6 +403,7 @@ type User {
 
 type Query {
     login: User!
+    user(email: ID!): User!
     users(from: ID): [User!]!
     searchUsers(namePart:String!):[User!]!
     adminEvents(from: Time): [AdminEvent!]!
@@ -519,6 +534,20 @@ func (ec *executionContext) field_Query_userInRole_args(ctx context.Context, raw
 		}
 	}
 	args["role"] = arg2
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_user_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["email"]; ok {
+		arg0, err = ec.unmarshalNID2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["email"] = arg0
 	return args, nil
 }
 
@@ -842,6 +871,47 @@ func (ec *executionContext) _Query_login(ctx context.Context, field graphql.Coll
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return ec.resolvers.Query().Login(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.User)
+	fc.Result = res
+	return ec.marshalNUser2ᚖgithubᚗcomᚋpujoᚑjᚋiam4apisᚋgraphᚋmodelᚐUser(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_user(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Query",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Query_user_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().User(rctx, args["email"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -2651,6 +2721,20 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_login(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
+		case "user":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_user(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}

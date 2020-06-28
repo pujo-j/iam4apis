@@ -10,7 +10,7 @@ A simple data microservice exposing a very simple authorization model User-Role-
 ## Why
 
 The original need was to expose user-facing applications on cloud infrastructure,
- while cloud-provider IAM systems permit fine grained roles on managed resources, 
+ while cloud-provider IAM systems permit fine-grained roles on managed resources, 
  there is no non-hacky way to reuse the IAM system for applicative roles.
  
 In these cases, we already have a great integrated identity and authentication provider, but are missing the authorization service.

@@ -31,6 +31,10 @@ func (r *queryResolver) Login(ctx context.Context) (*model.User, error) {
 	return r.Db.Login(ctx)
 }
 
+func (r *queryResolver) User(ctx context.Context, email string) (*model.User, error) {
+	return r.Db.GetUser(ctx, email)
+}
+
 func (r *queryResolver) Users(ctx context.Context, from *string) ([]*model.User, error) {
 	return r.Db.GetUsers(ctx, from)
 }

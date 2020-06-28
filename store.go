@@ -227,19 +227,25 @@ func (p *PostgreStore) UpdateUser(ctx context.Context, newUser model.EditUser) (
 func (p *PostgreStore) GetEvents(ctx context.Context, from *time.Time) ([]*model.AdminEvent, error) {
 	p.eventTailLock.RLock()
 	defer p.eventTailLock.RUnlock()
+	var from2 time.Time
+	if from == nil {
+		from2 = time.Now().Add(-24 * time.Hour)
+	} else {
+		from2 = *from
+	}
 	res := make([]*model.AdminEvent, 0, 50)
 	if len(p.eventTail) > 0 {
 		firstEvent := p.eventTail[0]
-		if from.After(firstEvent.Ts) {
+		if from2.After(firstEvent.Ts) {
 			for _, event := range p.eventTail {
-				if event.Ts.After(*from) {
+				if event.Ts.After(from2) {
 					res = append(res, event)
 				}
 			}
 			return res, nil
 		}
 	}
-	rows, err := p.pool.Query(ctx, "SELECT CAST(id as CHARACTER VARYING) as id, ts, admin_id, user_id, roles FROM admin_events WHERE ts>$1 ORDER BY ts LIMIT 50", from)
+	rows, err := p.pool.Query(ctx, "SELECT CAST(id as CHARACTER VARYING) as id, ts, admin_id, user_id, roles FROM admin_events WHERE ts>$1 ORDER BY ts LIMIT 50", from2)
 	if err != nil {
 		return nil, err
 	}

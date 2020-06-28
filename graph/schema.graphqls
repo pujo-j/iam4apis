@@ -33,6 +33,7 @@ type User {
 
 type Query {
     login: User!
+    user(email: ID!): User!
     users(from: ID): [User!]!
     searchUsers(namePart:String!):[User!]!
     adminEvents(from: Time): [AdminEvent!]!
